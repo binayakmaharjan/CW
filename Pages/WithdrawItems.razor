@@ -1,0 +1,140 @@
+﻿@page "/withdraw-items"
+<h3>Withdraw Items</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Quantity</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var inventoryItem in _inventoryItems)
+        {
+            <tr>
+                @if (inventoryItem.Quantity != 0)
+                {
+                    <td>@inventoryItem.ItemName</td>
+                    <td>@inventoryItem.Quantity.ToString()</td>
+
+                    <button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenWithdrawlInventoryDialog(inventoryItem)">
+                        <span class="oi oi-pencil" /> Withdraw
+                    </button>
+
+                }
+
+            </tr>
+        }
+    </tbody>
+
+
+</table>
+
+
+@if (_showWithdrawlInventoryDialog)
+{
+    <ModalDialog Title="@_dialogTitle" OnClose="@OnStaffInventoryDialogClose" OkLabel="@_dialogOkLabel">
+        <h1>Withdraw Items</h1>
+        <div class="form-floating">
+            <input id="itemName" type="text" class="form-control" @bind="_inventoryModel.ItemName" placeholder="Item Name" />
+            <label for="itemName">Item Name</label>
+        </div>
+        <div class="form-floating">
+            <input id="quantity" type="text" class="form-control" @bind="_inventoryModel.Quantity" placeholder="Quantity" />
+            <label for="quantity">Quantity</label>
+        </div>
+
+
+        @if (!string.IsNullOrEmpty(_editTodoErrorMessage))
+        {
+            <AlertMessage Type="danger" Message="@_editTodoErrorMessage" />
+        }
+    </ModalDialog>
+}
+
+@code {
+
+    [CascadingParameter]
+    private GlobalState _globalState { get; set; }
+    private List<InventoryItem> _inventoryItems { get; set; }
+    private bool _showAddItemDialog { get; set; }
+    private bool _showDeleteUserDialog { get; set; }
+    private string _addUserErrorMessage { get; set; }
+    private string _deleteUserErrorMessage { get; set; }
+    private User _deleteUser { get; set; }
+    private List<User> _users { get; set; }
+    private string _itemName { get; set; }
+    private string _quantity { get; set; }
+    private bool _showWithdrawlInventoryDialog { get; set; }
+
+
+
+    private string _editTodoErrorMessage { get; set; }
+    private string _deleteTodoErrorMessage { get; set; }
+    private string _dialogTitle { get; set; }
+    private string _dialogOkLabel { get; set; }
+    private InventoryItem _inventoryModel { get; set; }
+
+    private List<WithdrawItem> _withdrawlItems { get; set; }
+
+
+
+
+
+
+
+
+
+
+    protected override void OnInitialized()
+    {
+        _inventoryItems = InventoryService.GetAll(_globalState.CurrentUser.Id);
+        _withdrawlItems = WithdrawService.GetAll(_globalState.CurrentUser.Id);
+    }
+
+    private void OpenWithdrawlInventoryDialog(InventoryItem editInventory)
+    {
+        DateTime currentTime = DateTime.Now;
+
+
+
+        _dialogTitle = "Withdraw Items";
+        _dialogOkLabel = "Withdraw";
+        _inventoryModel = editInventory;
+        _showWithdrawlInventoryDialog = true;
+    }
+
+    private void OnStaffInventoryDialogClose(bool isCancel)
+    {
+
+
+        if (isCancel)
+        {
+            _showWithdrawlInventoryDialog = false;
+        }
+        else
+        {
+
+            try
+            {
+                _editTodoErrorMessage = "";
+                if (_inventoryModel.Id == Guid.Empty)
+                {
+                    _inventoryItems = InventoryService.Create(_globalState.CurrentUser.Id, _globalState.CurrentUser.Username, _inventoryModel.ItemName, _inventoryModel.Quantity);
+                }
+                else
+                {
+                    _inventoryItems = InventoryService.WithdrawItem(_globalState.CurrentUser.Id, _inventoryModel.Id, _inventoryModel.ItemName, _inventoryModel.Quantity);
+                    Console.WriteLine(_inventoryModel.ItemName);
+                }
+                _withdrawlItems = WithdrawService.Create(_globalState.CurrentUser.Id, _inventoryModel.Id, _inventoryModel.ItemName, _inventoryModel.Quantity, _globalState.CurrentUser.Username);
+                Console.WriteLine("Successfully Added to next Array");
+                _showWithdrawlInventoryDialog = false;
+            }
+            catch (Exception e)
+            {
+                _editTodoErrorMessage = e.Message;
+            }
+        }
+    }
+}

@@ -1,0 +1,241 @@
+﻿@page "/inventory-details"
+
+<nav class="navbar navbar-light bg-light justify-content-between">
+    <h1 class="navbar-brand mb-0 h1">Inventory Items</h1>
+    @if (_globalState.CurrentUser?.Role == Role.Admin)
+    {
+        <button class="btn btn-primary" type="button" @onclick="OpenAddItemDialog">
+            <span class="oi oi-plus" /> Add Item
+        </button>
+    }
+</nav>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Added By</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var inventoryItem in _inventoryItems)
+        {
+            <tr>
+                <td>@inventoryItem.ItemName</td>
+                <td>@inventoryItem.Quantity.ToString()</td>
+                <td>@inventoryItem.AddedBy</td>
+
+                @if (_globalState.CurrentUser?.Role == Role.Admin)
+                {
+                    <button class="btn btn-outline-secondary" type="button" @onclick="()=>OpenEditInventoryDialog(inventoryItem)">
+                        <span class="oi oi-delete" /> Edit
+                    </button>
+                    <button class="btn btn-outline-danger" type="button" @onclick="()=>OpenDeleteInventoryDialog(inventoryItem)">
+                        <span class="oi oi-delete" /> Delete
+                    </button>
+                }
+            </tr>
+        }
+    </tbody>
+
+
+ </table>
+
+@if (_showAddItemDialog)
+{
+    <ModalDialog Title="Add User" OnClose="@OnAddInventoryItemDialogClose" OkLabel="Add">
+        <form>
+            <div class="form-floating">
+                <input type="text" class="form-control" @bind="_itemName" placeholder="Item Name" />
+                <label for="floatingInput">Item Name</label>
+            </div>           
+            <div class="form-floating">
+                <input type="text" class="form-control" @bind="_quantity" placeholder="Quantity" />
+                <label for="floatingInput">Quantity</label>
+            </div>
+            @if (!string.IsNullOrEmpty(_addUserErrorMessage))
+            {
+                <AlertMessage Type="danger" Message="@_addUserErrorMessage" />
+            }
+        </form>
+    </ModalDialog>
+}
+
+
+
+@if (_showEditInventoryDialog)
+{
+    <ModalDialog Title="@_dialogTitle" OnClose="@OnEditInventoryDialogClose" OkLabel="@_dialogOkLabel">
+        <div class="form-floating">
+            <input id="itemName" type="text" class="form-control" @bind="_inventoryModel.ItemName" placeholder="Item Name" />
+            <label for="itemName">Item Name</label>
+        </div>        
+        <div class="form-floating">
+            <input id="quantity" type="text" class="form-control" @bind="_inventoryModel.Quantity" placeholder="quantity" />
+            <label for="quantity">Quantity</label>
+        </div>
+
+
+        @if (!string.IsNullOrEmpty(_editTodoErrorMessage))
+        {
+            <AlertMessage Type="danger" Message="@_editTodoErrorMessage" />
+        }
+    </ModalDialog>
+}
+
+@if (_showDeleteInventoryDialog)
+{
+    <ModalDialog Title="Delete Todo" OnClose="@OnDeleteInventoryDialogClose" OkLabel="Confirm">
+        <p>Are you sure you want to delete <strong>@_deleteInventoryItem.ItemName</strong> ?</p>
+        @if (!string.IsNullOrEmpty(_deleteTodoErrorMessage))
+        {
+            <AlertMessage Type="danger" Message="@_deleteTodoErrorMessage" />
+        }
+    </ModalDialog>
+}
+
+@code {
+    [CascadingParameter]
+    private GlobalState _globalState { get; set; }
+    private List<InventoryItem> _inventoryItems { get; set; }
+    private bool _showAddItemDialog { get; set; }
+    private bool _showDeleteUserDialog { get; set; }
+    private string _addUserErrorMessage { get; set; }
+    private string _deleteUserErrorMessage { get; set; }
+    private User _deleteUser { get; set; }
+    private List<User> _users { get; set; }
+    private string _itemName { get; set; }
+    private int _quantity { get; set; }
+    
+
+
+    private bool _showEditTodoDialog { get; set; }
+    private bool _showEditInventoryDialog { get; set; }
+    private bool _showDeleteTodoDialog { get; set; }
+    private bool _showDeleteInventoryDialog { get; set; }
+    
+    private InventoryItem _deleteInventoryItem { get; set; }
+    private string _dialogTitle { get; set; }
+    private string _dialogOkLabel { get; set; }
+    private string _editTodoErrorMessage { get; set; }
+    private string _deleteTodoErrorMessage { get; set; }
+   
+    private InventoryItem _inventoryModel { get; set; }
+
+
+
+
+
+
+
+    protected override void OnInitialized()
+    {
+        _inventoryItems = InventoryService.GetAll(_globalState.CurrentUser.Id);
+    }
+
+    private void OpenAddItemDialog()
+    {
+        _showAddItemDialog = true;
+        _itemName = "";
+        _quantity = 0;
+
+    }
+
+
+    private void OnAddInventoryItemDialogClose(bool isCancel)
+    {
+        if (isCancel)
+        {
+            Console.WriteLine("Cancel Button is Presses");
+            _showAddItemDialog = false;
+        }
+        {
+            try
+            {
+                _addUserErrorMessage = "";
+                _inventoryItems = InventoryService.Create(_globalState.CurrentUser.Id,_globalState.CurrentUser.Username, _itemName, _quantity);
+                _showAddItemDialog = false;
+            }
+            catch (Exception e)
+            {
+                _addUserErrorMessage = e.Message;
+            }
+        }
+    }
+
+
+  
+    
+    private void OnEditInventoryDialogClose(bool isCancel)
+    {
+        if (isCancel)
+        {
+            _showEditInventoryDialog = false;
+        }
+        else
+        {
+            try
+            {
+                _editTodoErrorMessage = "";
+                if (_inventoryModel.Id == Guid.Empty)
+                {
+                    throw new Exception("Cannot edit unaccounted item");
+                }
+                else
+                {
+                    _inventoryItems = InventoryService.Update(_globalState.CurrentUser.Id,_inventoryModel.Id, _inventoryModel.ItemName, _inventoryModel.Quantity);
+                }
+                _showEditInventoryDialog = false;
+            }
+            catch (Exception e)
+            {
+                _editTodoErrorMessage = e.Message;
+            }
+        }
+    }
+
+    private void OpenDeleteInventoryDialog(InventoryItem inventoryItems)
+    {
+        _deleteInventoryItem = inventoryItems;
+        _showDeleteInventoryDialog = true;
+    }
+
+
+
+
+    private void OnDeleteInventoryDialogClose(bool isCancel)
+    {
+        if (isCancel)
+        {
+
+            _showDeleteInventoryDialog = false;
+            _deleteInventoryItem = null;
+        }
+        else
+        {
+            try
+            {
+                _deleteTodoErrorMessage = "";
+                _inventoryItems = InventoryService.Delete(_globalState.CurrentUser.Id, _deleteInventoryItem.Id);
+                _showDeleteInventoryDialog = false;
+                _deleteInventoryItem = null;
+            }
+            catch (Exception e)
+            {
+                _deleteTodoErrorMessage = e.Message;
+            }
+        }
+    }
+
+    private void OpenEditInventoryDialog(InventoryItem editInventory)
+    {
+        _dialogTitle = "Edit Todo";
+        _dialogOkLabel = "Save";
+        _inventoryModel = editInventory;
+        _showEditInventoryDialog = true;
+    }
+
+
+}

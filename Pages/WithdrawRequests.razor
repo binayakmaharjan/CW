@@ -1,0 +1,163 @@
+﻿@page "/withdraw-request"
+
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Item name</th>
+            <th>Quantity</th>
+            <th>Taken by</th>
+            <th>Date Taken Out</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var WithdrawItem in _WithdrawItems)
+        {
+            <tr>
+                <td>@WithdrawItem.ItemName</td>
+                <td>@WithdrawItem.Quantity.ToString()</td>
+                <td>@WithdrawItem.TakerName</td>
+                <td>
+                    <p class="small mb-0">
+                        @WithdrawItem.CreatedAt.ToString("MMM dd, yyyy h:mm tt")
+                    </p>
+                </td>
+                <td>
+                    <button class="btn btn-outline-secondary" @onclick="()=>OpenApproveItemDialog(WithdrawItem)" type=" button">
+                        <span class="oi oi-check" /> Approve
+                    </button>
+                 </td><td>
+                    <button class="btn btn-outline-secondary" @onclick="()=>OpenRejectItemDialog(WithdrawItem)" type=" button">
+                        <span class="oi oi-check" /> Reject
+                    </button>
+                 </td>
+
+
+            </tr>
+        }
+    </tbody>
+
+
+</table>
+
+
+@if (_showApproveItemDialog)
+{
+    <ModalDialog Title="Approve Item" OnClose="@OnApproveItemDialogClose" OkLabel="Confirm">
+        <p>Are you sure you want to approve this withdrawal?</p>
+        @if (!string.IsNullOrEmpty(_deleteUserErrorMessage))
+        {
+            <AlertMessage Type="danger" Message="@_deleteUserErrorMessage" />
+        }
+    </ModalDialog>
+}
+@if (_showRejectItemDialog)
+{
+    <ModalDialog Title="Reject Item" OnClose="@OnRejectItemDialogClose" OkLabel="Confirm">
+        <p>Are you sure you want to reject this withdrawal?</p>
+        @if (!string.IsNullOrEmpty(_deleteUserErrorMessage))
+        {
+            <AlertMessage Type="danger" Message="@_deleteUserErrorMessage" />
+        }
+    </ModalDialog>
+}
+
+@code {
+    [CascadingParameter]
+
+    private GlobalState _globalState { get; set; }
+    private List<WithdrawItem> _WithdrawItems { get; set; }
+    private bool _showAddItemDialog { get; set; }
+    private bool _showApproveItemDialog { get; set; }
+    private bool _showRejectItemDialog { get; set; }
+    private string _addUserErrorMessage { get; set; }
+    private string _deleteUserErrorMessage { get; set; }
+    private User _deleteUser { get; set; }
+    private List<User> _users { get; set; }
+    private string _itemName { get; set; }
+    private int _quantity { get; set; }
+
+
+    private List<ApprovedItem> _approvedItems { get; set; }
+    private List<InventoryItem> _InventoryItem { get; set; }
+    private WithdrawItem _withdrawlModel { get; set; }
+    private InventoryItem _inventoryModel { get; set; }
+    private WithdrawItem _deleteInventoryItem { get; set; }
+
+
+
+
+    protected override void OnInitialized()
+    {
+        _WithdrawItems = WithdrawService.GetAll(_globalState.CurrentUser.Id);
+        _approvedItems = ApprovedService.GetAll(_globalState.CurrentUser.Id);
+        _InventoryItem = InventoryService.GetAll(_globalState.CurrentUser.Id);
+    }
+
+
+
+
+
+    private void OpenRejectItemDialog(WithdrawItem WithdrawItem)
+    {
+        _showRejectItemDialog = true;
+        _withdrawlModel = WithdrawItem;
+    }
+
+    private void OnRejectItemDialogClose(bool isCancel)
+    {
+        if (isCancel)
+        {
+            _showRejectItemDialog = false;
+        }
+        else
+        {
+            _InventoryItem = InventoryService.RejectWithdrawItem(_globalState.CurrentUser.Id,_withdrawlModel.ItemId, _withdrawlModel.ItemName, _withdrawlModel.Quantity);
+            _WithdrawItems = WithdrawService.Delete(_withdrawlModel.ItemId, _withdrawlModel.Id);
+            _showRejectItemDialog = false;
+        }
+    }
+
+    private void OpenApproveItemDialog(WithdrawItem WithdrawItem)
+    {
+
+        _showApproveItemDialog = true;
+        _withdrawlModel = WithdrawItem;
+        Console.WriteLine("The dialog box should be shown here");
+
+    }
+
+
+    private void OnApproveItemDialogClose(bool isCancel)
+    {
+        if (isCancel)
+        {
+            _showApproveItemDialog = false;
+        }
+        else
+        {
+            try
+            {
+                if (_withdrawlModel.ItemId == Guid.Empty)
+                {
+                    throw new Exception("Item not found");
+                }
+                else
+                {
+                    _approvedItems = ApprovedService.Create(_withdrawlModel.TakenBy, _withdrawlModel.ItemName, _withdrawlModel.ItemId,
+                    _withdrawlModel.Quantity, _withdrawlModel.TakerName, _globalState.CurrentUser.Id,
+                    _globalState.CurrentUser.Username, true);
+                    _showApproveItemDialog = false;
+                }
+
+                _WithdrawItems = WithdrawService.Delete(_globalState.CurrentUser.Id,_withdrawlModel.Id);
+            }
+            catch (Exception e)
+            {
+                _addUserErrorMessage = e.Message;
+            }
+        }
+    }
+
+}

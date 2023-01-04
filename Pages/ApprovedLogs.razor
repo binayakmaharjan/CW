@@ -1,0 +1,72 @@
+﻿@page "/approved-log"
+
+<h3>ApprocedLog</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Item name</th>
+            <th>Quantity</th>
+            <th>Taken By</th>
+            <th>Approved By</th>
+            <th>
+                Approved Date
+                <a class='btn text-@(_sortBy == "approvedDate" ? "primary" : "secondary")' data-mdb-toggle="tooltip"
+                   @onclick='()=>SortByHandler("approvedDate")'>
+                    <span class='oi oi-sort-@(_sortBy == "approvedDate" ? _sortDirection : "ascending")' />
+                </a>
+            </th>
+
+        </tr>
+    </thead>
+    @{
+        IEnumerable<ApprovedItem> approvedList = _approvedItems;
+        if (_sortBy == "approvedDate")
+        {
+            approvedList = _sortDirection == "ascending" ? approvedList.OrderBy(t => t.ApprovedDate) : approvedList.OrderByDescending(t =>
+            t.ApprovedDate);
+        }
+
+    }
+    @foreach (var approvedItem in approvedList)
+    {
+        <tr>
+            <td>@approvedItem.ItemName</td>
+            <td>@approvedItem.Quantity.ToString()</td>
+            <td>@approvedItem.TakerName</td>
+            <td>@approvedItem.ApproverName</td>
+            <td>@approvedItem.ApprovedDate.ToString("MMM dd, yyyy h:mm tt")</td>
+        </tr>
+    }
+</table>
+
+@code {
+    [CascadingParameter]
+    private GlobalState _globalState { get; set; }
+    private List<ApprovedItem> _approvedItems { get; set; }
+
+    private string _sortBy = "approvedDate";
+    private string _sortDirection = "ascending";
+
+
+
+    protected override void OnInitialized()
+    {
+        _approvedItems = ApprovedService.GetAll(_globalState.CurrentUser.Id);
+    }
+
+    private void SortByHandler(string sortByName)
+    {
+        if (_sortBy == sortByName)
+        {
+            _sortDirection = _sortDirection == "ascending" ? "descending" : "ascending";
+        }
+        else
+        {
+            _sortBy = sortByName;
+            _sortDirection = "ascending";
+        }
+    }
+
+
+}
